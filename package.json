@@ -1,0 +1,38 @@
+{
+    "name": "0protocol",
+    "version": "1.0.0",
+    "description": "",
+    "main": "start.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start:testnet": "node -r esm start.js",
+        "start:mainnet": "node -r esm start.js --mainnet",
+        "prepare": "run-s prepare:*",
+        "prepare:lib-base": "yarn workspace @liquity/lib-base prepare",
+        "prepare:lib-ethers": "yarn workspace @liquity/lib-ethers prepare"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@gitlab.com/a2steve/0protocol.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://gitlab.com/a2steve/0protocol/issues"
+    },
+    "homepage": "https://gitlab.com/a2steve/0protocol#readme",
+    "private": true,
+    "workspaces": {
+        "packages": [
+            "packages/*"
+        ]
+    },
+    "dependencies": {
+        "chalk": "^5.0.0",
+        "dotenv": "^16.0.0",
+        "ethers": "^5.5.4"
+    },
+    "devDependencies": {
+        "esm": "^3.2.25"
+    }
+}
