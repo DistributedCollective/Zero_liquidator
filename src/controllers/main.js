@@ -1,9 +1,12 @@
 const { Decimal, UserTrove, ZUSD_LIQUIDATION_RESERVE, Trove } = require("@liquity/lib-base");
 const { EthersLiquity, EthersLiquityWithStore } = require("../../packages/lib-ethers/dist");
-const { Wallet, providers, } = require("ethers");
+const { _getContracts } = require("../../packages/lib-ethers/dist/src/EthersLiquityConnection");
+
+const { Wallet, providers, utils } = require("ethers");
 const config = require('../configs');
 const db = require('./db');
 const monitor = require('./monitor');
+const TroveStatus = require("../models/troveStatus");
 
 function log(message) {
     console.log(`${`[${new Date().toLocaleTimeString()}]`} ${message}`);
@@ -20,6 +23,7 @@ module.exports.start = async function (io) {
     const provider = new providers.JsonRpcProvider(config.node);
     const wallet = new Wallet(process.env.PRIVATE_KEY).connect(provider);
     const liquity = await EthersLiquity.connect(wallet, { useStore: "blockPolled" });
+    const { troveManager } = _getContracts(liquity.connection);
 
     monitor.init(wallet, liquity);
     io.on('connection', (socket) => {
@@ -40,12 +44,15 @@ module.exports.start = async function (io) {
         // Try to liquidate whenever the price drops
         console.log("\nnew price %s, old %s", newState.price, oldState.price);
         console.log("Total troves", (await liquity.getTotal()).toString());
+        console.log("NumberOfTroves", await liquity.store.state.numberOfTroves);
         console.log("ZUSD in Pool", (await liquity.getZUSDInStabilityPool()).toString());
+        console.log('System TCR', utils.formatEther(await troveManager.getTCR(liquity.store.state.price.mul(100).bigNumber)));
 
-        tryToLiquidate(liquity);
-        // if (newState.price.lt(oldState.price)) {
-        //     tryToLiquidate(liquity);
-        // }
+        if (newState.price.lt(oldState.price)) {
+            await tryToLiquidate(liquity);
+        }
+
+        updateTrovesStatus(liquity);
     });
 
     liquity.store.start();
@@ -76,8 +83,8 @@ const filterLiquidateTroves = async (price, troves) => {
     const filteredTroves = [];
     await Promise.all(troves.map(async (trove) => {
         if (!underCollateralized(price)(trove)) return false;
-        const added = await db.getTrove(trove.ownerAddress);
-        if (added && added.status == 'open') {
+        const added = await db.getTrove(trove.ownerAddress, TroveStatus.open);
+        if (added) {
             trove.dbId = added.id;
             filteredTroves.push(trove);
         }
@@ -113,7 +120,7 @@ async function tryToLiquidate(liquity) {
     let troves = await filterLiquidateTroves(store.state.price, riskiestTroves);
     troves = troves
         .sort(byDescendingCollateral)
-        .slice(0, 40);
+        .slice(0, 90);
 
     console.log('Liquidated troves', troves.length);
 
@@ -127,7 +134,7 @@ async function tryToLiquidate(liquity) {
 
     try {
         await Promise.all(troves.map(trove => db.updateTrove(trove.dbId, {
-            status: 'liquidating'
+            status: TroveStatus.liquidating
         })));
 
         const liquidation = await liquity.populate.liquidate(addresses, { gasPrice: gasPrice.hex });
@@ -152,28 +159,26 @@ async function tryToLiquidate(liquity) {
 
         info(`Attempting to liquidate ${troves.length} Trove(s)...`);
 
-        tx = await liquidation.send();
+        tx = await liquidation.send({
+            gasLimit: String(Math.round(gasLimit * 1.2))
+        });
         console.log('tx', tx.rawSentTransaction.hash);
-
-        console.log(await db.troveModel.find({ owner: troves.map(t => t.ownerAddress) }));
 
         const receipt = await tx.waitForReceipt();
 
         if (receipt.status === "failed") {
             error(`TX ${receipt.rawReceipt.transactionHash} failed.`);
-            await Promise.all(troves.map(async (trove) => {
-                const dbTrove = await db.getTrove(trove.ownerAddress, 'liquidating');
-                if (dbTrove) {
-                    await db.updateTrove(dbTrove.id, {
-                        txHash: tx && tx.rawSentTransaction.hash,
-                        status: 'failed'
-                    });
-                }
-            }));
+            await Promise.all(troves.map((trove) => db.updateLiquidatingTrove(trove.ownerAddress, {
+                txHash: tx && tx.rawSentTransaction.hash,
+                status: TroveStatus.failed
+            })));
             return;
         }
 
         const { collateralGasCompensation, zusdGasCompensation, liquidatedAddresses } = receipt.details;
+        
+        console.log('liquidatedAddresses', liquidatedAddresses.length, liquidatedAddresses);
+
         const gasCost = gasPrice.mul(receipt.rawReceipt.gasUsed.toNumber()).mul(store.state.price);
         const totalCompensation = collateralGasCompensation
             .mul(store.state.price)
@@ -181,14 +186,12 @@ async function tryToLiquidate(liquity) {
         const totalProfit = totalCompensation.sub(gasCost);
         const profitPerTrove = totalProfit.div(liquidatedAddresses.length);
 
-        await Promise.all(troves.map(trove => db.updateTrove(trove.dbId, {
+        await Promise.all(troves.map(trove => db.updateLiquidatingTrove(trove.ownerAddress, {
             liquidator: receipt.rawReceipt.from,
             txHash: receipt.rawReceipt.transactionHash,
             profit: profitPerTrove.toString(),
-            status: 'liquidated'
+            status: TroveStatus.liquidated
         })));
-
-        console.log(await db.troveModel.find({ owner: troves.map(t => t.ownerAddress) }));
 
         success(
             `Received ${collateralGasCompensation.toString(4)} RBTC ` +
@@ -202,14 +205,42 @@ async function tryToLiquidate(liquity) {
         error("Unexpected error:");
         console.error(err);
 
-        await Promise.all(troves.map(async (trove) => {
-            const dbTrove = await db.getTrove(trove.ownerAddress, 'liquidating');
-            if (dbTrove) {
-                await db.updateTrove(dbTrove.id, {
-                    txHash: tx && tx.rawSentTransaction.hash,
-                    status: 'failed'
-                });
-            }
+        await Promise.all(troves.map((trove) => db.updateLiquidatingTrove(trove.ownerAddress, {
+            txHash: tx && tx.rawSentTransaction.hash,
+            status: TroveStatus.failed
+        })));
+    }
+}
+
+/**
+ * @param {EthersLiquityWithStore} [liquity]
+ */
+async function updateTrovesStatus(liquity) {
+    try {
+        const troves = await liquity.getTroves({
+            first: 1000,
+            sortedBy: "ascendingCollateralRatio"
+        });
+        await Promise.all(troves.map(trove => {
+            trove.icr = trove.collateralRatio(liquity.store.state.price);
+            return db.addTrove(trove);
         }));
+
+        const openingTroves = await db.listTroves({
+            status: [ TroveStatus.open, TroveStatus.liquidating ]
+        });
+
+        for (let i = 0; i < openingTroves.length; i++) {
+            const trove = openingTroves[i];
+            const netTrove = await liquity.getTrove(trove.owner);
+
+            if (netTrove && (netTrove.status == TroveStatus.closedByOwner || netTrove.status == TroveStatus.closedByLiquidation)) {
+                await db.updateTrove(trove.id, { status: netTrove.status });
+                console.log('updated', netTrove);
+            }
+        }
+
+    } catch (err) {
+        console.error(err);
     }
 }

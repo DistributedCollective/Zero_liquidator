@@ -25,7 +25,7 @@ module.exports = {
     new CopyPlugin({
       patterns: [
         {from: 'public/src/index.html'},
-        {from: 'public/src/orderbook.html'},
+        {from: 'public/src/troves.html'},
         {from: 'public/src/libs', to: 'libs'}
       ]
     }),

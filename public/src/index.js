@@ -81,7 +81,7 @@ class AppCtrl {
 }
 
 
-class OrderBookCtrl {
+class TrovesCtrl {
     constructor($scope) {
         this.troves = {
             list: [],
@@ -139,7 +139,7 @@ class OrderBookCtrl {
 
 angular.module('app', ['ui.bootstrap'])
     .controller('appCtrl', AppCtrl)
-    .controller('orderBookCtrl', OrderBookCtrl)
+    .controller('trovesCtrl', TrovesCtrl)
     ;
 
 angular.bootstrap(document, ['app']);

@@ -5,6 +5,7 @@ const path = require("path");
 const SQLite3 = require('sqlite3');
 
 const TroveModel = require("../models/troveModel");
+const TroveStatus = require("../models/troveStatus");
 const Utils = require("../utils/utils");
 
 const sqlite3 = SQLite3.verbose();
@@ -46,7 +47,7 @@ class DbCtrl {
         try {
             const exists = await this.troveModel.findOne({
                 owner: trove.ownerAddress,
-                status: ['open', 'liquidating']
+                status: [TroveStatus.open, TroveStatus.liquidating]
             });
             const collateralBtc = trove.collateral.toString();
             const borrowedUsd = trove.debt.toString();
@@ -54,7 +55,7 @@ class DbCtrl {
                 return this.troveModel.update({ id: exists.id }, {
                     collateralBtc: collateralBtc,
                     borrowedUsd: borrowedUsd,
-                    status: trove.status,
+                    status: exists.status == TroveStatus.liquidating ? exists.status : trove.status,
                     icr: trove.icr
                 });
             }
@@ -85,6 +86,18 @@ class DbCtrl {
         }
     }
 
+    async updateLiquidatingTrove(ownerAddress, { liquidator, txHash, profit, status }) {
+        const liquidating = await db.getTrove(ownerAddress, TroveStatus.liquidating);
+        if (liquidating) {
+            await db.updateTrove(liquidating.id, {
+                liquidator,
+                txHash,
+                profit,
+                status,
+            });
+        }
+    }
+
     /**
      * Count total successful, failed liquidated troves
      */
@@ -103,7 +116,7 @@ class DbCtrl {
                 if (row.profit) {
                     profit += Number(row.profit);
                 }
-                if (row.status == 'liquidated') successActions ++;
+                if (row.status == TroveStatus.liquidated) successActions ++;
                 else failedActions ++;
             });
             return { successActions, failedActions, profit };
