@@ -7,6 +7,7 @@ const config = require('../configs');
 const db = require('./db');
 const monitor = require('./monitor');
 const TroveStatus = require("../models/troveStatus");
+const Utils = require('../utils/utils');
 
 function log(message) {
     console.log(`${`[${new Date().toLocaleTimeString()}]`} ${message}`);
@@ -186,20 +187,28 @@ async function tryToLiquidate(liquity) {
         const totalProfit = totalCompensation.sub(gasCost);
         const profitPerTrove = totalProfit.div(liquidatedAddresses.length);
 
-        await Promise.all(troves.map(trove => db.updateLiquidatingTrove(trove.ownerAddress, {
-            liquidator: receipt.rawReceipt.from,
-            txHash: receipt.rawReceipt.transactionHash,
-            profit: profitPerTrove.toString(),
-            status: TroveStatus.liquidated
-        })));
+        await Promise.all(troves.map(trove => {
+            if (liquidatedAddresses.includes(trove.ownerAddress)) {
+                return db.updateLiquidatingTrove(trove.ownerAddress, {
+                    liquidator: receipt.rawReceipt.from,
+                    txHash: receipt.rawReceipt.transactionHash,
+                    profit: profitPerTrove.toString(),
+                    status: TroveStatus.liquidated
+                });
+            }
+        }));
 
-        success(
-            `Received ${collateralGasCompensation.toString(4)} RBTC ` +
+        const msg = `Received ${collateralGasCompensation.toString(4)} RBTC ` +
             `${zusdGasCompensation.toString(2)} ZUSD compensation (` +
             (totalCompensation.gte(gasCost)
-                ? `$${totalCompensation.sub(gasCost).toString(2)} profit`
+                ? `$${totalProfit.toString(2)} profit`
                 : `$${gasCost.sub(totalCompensation).toString(2)} loss`) +
-            `) for liquidating ${liquidatedAddresses.length} Trove(s).`
+            `) for liquidating ${liquidatedAddresses.length} Trove(s).`;
+
+        success(msg);
+        
+        Utils.sendTelegramMsg(`<b>ZERO:</b> ${msg}
+            \nTx: ${config.blockExplorer}/tx/${tx.rawSentTransaction.hash}`
         );
     } catch (err) {
         error("Unexpected error:");

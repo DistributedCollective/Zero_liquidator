@@ -7,6 +7,7 @@ import { Decimal } from "@liquity/lib-base";
 import devOrNull from "../deployments/dev.json";
 import mainnet from "../deployments/mainnet.json";
 import rsktestnet from "../deployments/rsktestnet.json";
+import rsksovrynmainnet from "../deployments/rsksovrynmainnet.json";
 import rskdev from "../deployments/rskdev.json";
 
 import { EthersProvider, EthersSigner } from "./types";
@@ -24,6 +25,9 @@ const dev = devOrNull as _LiquityDeploymentJSON | null;
 
 const deployments = {
   [rsktestnet.chainId]: rsktestnet,
+
+  ...(rsksovrynmainnet ? { [rsksovrynmainnet.chainId]: rsksovrynmainnet } : {}),
+
   ...(rskdev ? { [rskdev.chainId]: rskdev } : {}),
 
   ...(dev !== null ? { [dev.chainId]: dev } : {})

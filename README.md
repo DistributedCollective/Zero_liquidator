@@ -1,7 +1,7 @@
 # Zero liquidator
 
-NodeJs Liquidation bot for the Zero protocol.
-  It watches the stability pool and triggers batch liquidations. Notifications on successful liquidations or errors are sent via Telegram messenger. A frontend displays all open troves, the bot balance and liquidation profit/loss.
+NodeJs/Typescript Liquidation bot for the Zero protocol.
+  It watches the stability pool and triggers batch liquidations. Notifications on successful liquidations or errors are sent via Telegram messenger. A frontend displays all open troves, the bot balance and p/l of liquidation.
 
 
 ## How it works
@@ -9,6 +9,12 @@ NodeJs Liquidation bot for the Zero protocol.
 All relevant information about how the liquidation system on Zero works can be found here
 https://github.com/DistributedCollective/zero
 
+To set the protocol addresses go to packages/lib-ethers/deployments/default/mainnet.json
+
+
+## Testing
+
+Testing requires a full deployment of the Zero protocol with mock-pricefeed set.
 
 
 
