@@ -24,6 +24,7 @@ Testing requires a full deployment of the Zero protocol with mock-pricefeed set.
 ```
 PRIVATE_KEY=0x..
 ```
+3. Create empty folder db
 4. Start bot: yarn start:[mainnet|testnet]
 5. To create the frontend run 
 ```
