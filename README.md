@@ -1,7 +1,7 @@
 # Zero liquidator
 
 NodeJs/Typescript Liquidation bot for the Zero protocol.
-  It watches the stability pool and triggers batch liquidations. Notifications on successful liquidations or errors are sent via Telegram messenger. A frontend displays all open troves, the bot balance and p/l of liquidation.
+  It watches Lines of credit and triggers batch liquidations. Notifications on successful liquidations or errors are sent via Telegram messenger. A frontend displays all open troves, the bot balance and p/l of liquidation.
 
 
 ## How it works
