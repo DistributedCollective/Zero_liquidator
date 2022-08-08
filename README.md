@@ -9,7 +9,16 @@ NodeJs/Typescript Liquidation bot for the Zero protocol.
 All relevant information about how the liquidation system on Zero works can be found here
 https://github.com/DistributedCollective/zero
 
+
+Whenever the price drops the bot retrieves a list of troves with a collateral ratio below 110%.
+If collateral is below 110% the trove (or many of them) can be liquidated.
+The bot calls the liquidate function on the troveManager contract and sends the list of collected addresses as parameter.
+
+To be competitive against other liquidators and to assure the transaction is included in the mempool even if the network is under high load, dynamic gas prices are implemented. They are based on a profit estimation and the current state of the mempool. 
+
 To set the protocol addresses go to packages/lib-ethers/deployments/default/mainnet.json
+
+
 
 
 ## Testing
