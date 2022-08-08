@@ -1,5 +1,5 @@
 module.exports = {
-    node: "http://54.187.183.196:4444",
+    node: "https://mainnet.sovryn.app/rpc",
     db: "zero_main.db",
     blockExplorer: "https://explorer.rsk.co",
     serverPort: 3005,
