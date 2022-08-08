@@ -87,9 +87,9 @@ class DbCtrl {
     }
 
     async updateLiquidatingTrove(ownerAddress, { liquidator, txHash, profit, status }) {
-        const liquidating = await db.getTrove(ownerAddress, TroveStatus.liquidating);
+        const liquidating = await this.getTrove(ownerAddress, TroveStatus.liquidating);
         if (liquidating) {
-            await db.updateTrove(liquidating.id, {
+            await this.updateTrove(liquidating.id, {
                 liquidator,
                 txHash,
                 profit,

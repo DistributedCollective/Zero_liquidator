@@ -26,13 +26,10 @@ class Monitor {
             ).toFixed(5),
             zusdBalance: Number(
                 (await this.liquidity.getZUSDBalance(this.wallet.address)).toString()
-            ),
-            zeroBalance: Number(
-                (await this.liquidity.getZEROBalance(this.wallet.address)).toString()
-            ),
+            )
         };
 
-        let usdBalance = accountWithInfo.zusdBalance + accountWithInfo.zeroBalance;
+        let usdBalance = accountWithInfo.zusdBalance || 0;
 
         if (Number(accountWithInfo.rBtcBalance) > 0) {
             usdBalance += Number(accountWithInfo.rBtcBalance) * Number(this.liquidity.store.state.price.toString());

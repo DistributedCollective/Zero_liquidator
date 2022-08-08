@@ -2,10 +2,11 @@ const { Decimal, UserTrove, ZUSD_LIQUIDATION_RESERVE, Trove } = require("@liquit
 const { EthersLiquity, EthersLiquityWithStore } = require("../../packages/lib-ethers/dist");
 const { _getContracts } = require("../../packages/lib-ethers/dist/src/EthersLiquityConnection");
 
-const { Wallet, providers, utils } = require("ethers");
+const { Wallet, providers, utils, ethers, Contract } = require("ethers");
 const config = require('../configs');
 const db = require('./db');
 const monitor = require('./monitor');
+const mempool = require('./mempool');
 const TroveStatus = require("../models/troveStatus");
 const Utils = require('../utils/utils');
 
@@ -43,7 +44,7 @@ module.exports.start = async function (io) {
 
     liquity.store.subscribe(async ({ newState, oldState }) => {
         // Try to liquidate whenever the price drops
-        console.log("\nnew price %s, old %s", newState.price, oldState.price);
+        console.log("\n%s: new price %s, old %s", new Date(), newState.price, oldState.price);
         console.log("Total troves", (await liquity.getTotal()).toString());
         console.log("NumberOfTroves", await liquity.store.state.numberOfTroves);
         console.log("ZUSD in Pool", (await liquity.getZUSDInStabilityPool()).toString());
@@ -93,22 +94,18 @@ const filterLiquidateTroves = async (price, troves) => {
     return filteredTroves;
 }
 
+
+let lastGasPrice;
 /**
  * @param {EthersLiquityWithStore} [liquity]
  */
 async function tryToLiquidate(liquity) {
     const { store } = liquity;
 
-    const [gasPrice, riskiestTroves] = await Promise.all([
-        liquity.connection.provider
-            .getGasPrice()
-            .then(bn => Decimal.fromBigNumberString(bn.toHexString())),
-
-        liquity.getTroves({
-            first: 1000,
-            sortedBy: "ascendingCollateralRatio"
-        })
-    ]);
+    const riskiestTroves = await liquity.getTroves({
+        first: 1000,
+        sortedBy: "ascendingCollateralRatio"
+    })
 
     console.log("RiskiestTroves", riskiestTroves.length);
     console.log("Current Price", String(store.state.price));
@@ -134,6 +131,21 @@ async function tryToLiquidate(liquity) {
     let tx;
 
     try {
+        const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice();
+        let gasPrice;
+
+        if (maxGasPriceFromMempool.gt(0)) {
+            gasPrice = maxGasPriceFromMempool.mul(1.05);
+        } else {
+            gasPrice = await liquity.connection.provider
+            .getGasPrice()
+            .then(bn => Decimal.fromBigNumberString(bn.toHexString()).mul(config.gasPriceBuffer) );
+
+            if (lastGasPrice != null && gasPrice.lt(lastGasPrice)) {
+                gasPrice = lastGasPrice;
+            }
+        }
+
         await Promise.all(troves.map(trove => db.updateTrove(trove.dbId, {
             status: TroveStatus.liquidating
         })));
@@ -159,6 +171,10 @@ async function tryToLiquidate(liquity) {
         }
 
         info(`Attempting to liquidate ${troves.length} Trove(s)...`);
+
+        if (lastGasPrice == null || lastGasPrice.lt(gasPrice)) {
+            lastGasPrice = gasPrice;
+        }
 
         tx = await liquidation.send({
             gasLimit: String(Math.round(gasLimit * 1.2))
