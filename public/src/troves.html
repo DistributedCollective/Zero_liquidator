@@ -22,7 +22,7 @@
             <div style="margin:  8px -15px;" class="row">
                 <div class="col-md-2 col-xs-6">
                     <select name="filterSpotStatus" class="form-control" ng-model="ctrl.troves.status"
-                        ng-change="ctrl.listTroves('spot')">
+                        ng-change="ctrl.listTroves()">
                         <option value="">All status</option>
                         <option value="open">Open</option>
                         <option value="liquidated">Liquidated</option>
@@ -73,7 +73,7 @@
                 </tbody>
             </table>
             <ul uib-pagination class="pagination-sm" boundary-links="true" total-items="ctrl.troves.total"
-                ng-model="ctrl.troves.page" ng-change="ctrl.listTroves('spot')" items-per-page="100" max-size="5"
+                ng-model="ctrl.troves.page" ng-change="ctrl.listTroves()" items-per-page="100" max-size="5"
                 previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;">
             </ul>
         </div>
