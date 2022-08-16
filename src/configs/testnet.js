@@ -7,5 +7,6 @@ module.exports = {
         apiToken: process.env.TELEGRAM_APITOKEN,
         chatId: process.env.TELEGRAM_CHATID
     },
-    gasPriceBuffer: 1.1
+    gasPriceBuffer: 1.1,
+    gasCostThreshold: 0.95
 };
