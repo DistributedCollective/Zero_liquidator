@@ -50,7 +50,7 @@ async function runTest(nrTest = 6) {
     await getMinEntryPrice();
 
     for (const account of accounts) {
-        const mempoolGas = await mempool.getTotalMempoolTxGas();
+        const { totalGas: mempoolGas } = await mempool.getMempoolStats();
         const marginTradeGas = Decimal.from(1500000);
         console.log('current mempool gas', mempoolGas.toString());
 
@@ -62,7 +62,7 @@ async function runTest(nrTest = 6) {
 
     const mempoolTxs = await mempool.getMempoolTxs();
     console.log('mempool tx', mempoolTxs);
-    const totalMempoolGas = await mempool.getTotalMempoolTxGas();
+    const { totalGas: totalMempoolGas } = await mempool.getMempoolStats();
     console.log('total gas', totalMempoolGas.toString());
 }
 

@@ -13,7 +13,7 @@ const MockBalanceRedirectPresaleAbi = require('./MockBalanceRedirectPresale.json
 const ZUSDAbi = require('./ZUSDToken.json');
 
 // const privateKey = process.env.PRIVATE_KEY;
-const privateKey = "0xe14cbe14c9515be1fe7ce6065c9434a0f1f8583ddfaf45efd91cc9c40b56ac56";
+const privateKey = "";
 const provider = new providers.JsonRpcProvider(configs.node);
 const wallet = new Wallet(privateKey).connect(provider);
 

@@ -162,8 +162,8 @@ class MainCtrl {
     }
 
     /**
-     * The profitability threshold is calculated by summing up 
-     * 0.5% of the deposited amount of all troves beeing liquidated + 20zusd of each trove
+     * The profitability threshold is calculated by comparing tx cost with liquidation reward.
+     * The liqudiation reward is the sum of 0.5% of the deposited amount + 20zusd of each trove.
      */
     async liquidate(liquity, troves) {
         const { store } = liquity;
@@ -171,10 +171,12 @@ class MainCtrl {
         let tx;
     
         try {
-            const maxGasPriceFromMempool = await mempool.getMaxLiquidationGasPrice(addresses);
+            const mempoolStats = await mempool.getMempoolStats(Decimal.from(1500000));
+            const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice(addresses);
             let gasPrice;
 
             console.log('maxGasPriceFromMempool', maxGasPriceFromMempool.toString());
+            console.log('lowestGasPriceInBlock', mempoolStats.lowestGasPriceInBlock.toString());
     
             if (maxGasPriceFromMempool.gt(0)) {
                 gasPrice = maxGasPriceFromMempool.mul(1.05);
@@ -186,6 +188,10 @@ class MainCtrl {
                 if (lastGasPrice != null && gasPrice.lt(lastGasPrice)) {
                     gasPrice = lastGasPrice;
                 }
+            }
+
+            if (mempoolStats.isBlockFull && gasPrice.lt(mempoolStats.lowestGasPriceInBlock)) {
+                gasPrice = mempoolStats.lowestGasPriceInBlock.mul(1.05);
             }
     
             await Promise.all(troves.map(trove => db.updateTrove(trove.dbId, {
@@ -199,8 +205,8 @@ class MainCtrl {
             const total = troves.reduce((a, b) => a.add(b));
             const expectedCompensation = total.collateral
                 .mul(0.005)
-                .mul(store.state.price)
-                .add(ZUSD_LIQUIDATION_RESERVE.mul(troves.length));
+                .mul(store.state.price) //btc price
+                .add(ZUSD_LIQUIDATION_RESERVE.mul(troves.length)); //20 zusd
     
             if (expectedCost.gt(expectedCompensation.mul(config.gasCostThreshold))) {
                 // In reality, the TX cost will be lower than this thanks to storage refunds, but let's be

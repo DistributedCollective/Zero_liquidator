@@ -38,6 +38,25 @@ class Mempool {
         return maxGasPrice;
     }
 
+    async getMaxGasPrice()  {
+        const txs = await this.getMempoolTxs();
+        let maxGasPrice = Decimal.from(0);
+        let totalGas = Decimal.from(0);
+
+        txs.forEach(tx => {
+            const gasPrice = Decimal.fromBigNumberString(tx.gasPrice);
+            if (gasPrice.gt(maxGasPrice)) {
+                maxGasPrice = gasPrice;
+            }
+            totalGas = totalGas.add(Decimal.fromBigNumberString(tx.gas));
+        });
+
+        return {
+            maxGasPrice,
+            isBlockFull: totalGas.gt(maxBlockGas)
+        };
+    }
+
     async getMempoolTxs() {
         try {
             const res = await this.provider.send('txpool_content');
@@ -68,20 +87,38 @@ class Mempool {
     }
 
     /**
-     * Get sum gas of all pending transactions in mempool
+     * Get stats of current pending txs in mempool
+     * - sum gas of all pending transactions
+     * - is block full with max 6.8mio gas?
+     * - highest gas price of the pending txs
+     * 
+     * @param {Decimal} liquidationTxGas gas limit of liquidation tx to check lowest gas price that ensure tx will be included in current block
      */
 
-    async getTotalMempoolTxGas() {
+    async getMempoolStats(liquidationTxGas = Decimal.from(0)) {
         let txList = await this.getMempoolTxs();
         let totalGas = Decimal.from(0);
+        let lowestGasPriceInBlock;
+
         txList = txList.sort((a, b) => Number(b.gasPrice) - Number(a.gasPrice));
+
+        lowestGasPriceInBlock = Decimal.fromBigNumberString(txList[txList.length - 1].gasPrice);
 
         console.log('pending txs', txList.length);
 
         for (const tx of txList) {
             totalGas = totalGas.add(Decimal.from(Number(tx.gas)));
+
+            if (totalGas.add(liquidationTxGas).lt(maxBlockGas)) {
+                lowestGasPriceInBlock = Decimal.fromBigNumberString(tx.gasPrice);
+            }
         }
-        return totalGas;
+
+        return {
+            totalGas: totalGas,
+            isBlockFull: totalGas.gt(maxBlockGas),
+            lowestGasPriceInBlock
+        }
     }
 }
 

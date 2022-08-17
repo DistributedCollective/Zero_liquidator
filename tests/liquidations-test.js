@@ -191,7 +191,7 @@ async function testGasPrice(ownerLiquity) {
         const memTxs = await mempool.getMempoolTxs();
         console.log(memTxs);
 
-        const {tx, expectedCompensation} = await main.sendLiquidate(botLiquity, troves);
+        const {tx, expectedCompensation} = await main.liquidate(botLiquity, troves);
 
         if (tx) {
             console.log(tx.rawSentTransaction);
