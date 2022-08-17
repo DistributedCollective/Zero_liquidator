@@ -113,7 +113,7 @@ class MainCtrl {
                     oldState = newState;
                 }, 5000);
 
-                updateTrovesStatus();
+                updateTrovesStatus(liquity);
             });
         };
 
