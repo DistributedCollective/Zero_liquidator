@@ -11,7 +11,7 @@ class Mempool {
         this.provider = new ethers.providers.JsonRpcProvider(config.node);
     }
 
-    async getMaxLiquidateGasPrice(troveAddresses, curLiqTx) {
+    async getMaxLiquidationGasPrice(troveAddresses, curLiqTx) {
         const txs = await this.getMempoolTxs();
         let maxGasPrice = Decimal.from(0);
         console.log('mempool length', txs.length);

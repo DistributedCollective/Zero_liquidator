@@ -112,6 +112,8 @@ class MainCtrl {
                     
                     oldState = newState;
                 }, 5000);
+
+                updateTrovesStatus();
             });
         };
 
@@ -130,8 +132,8 @@ class MainCtrl {
             sortedBy: "ascendingCollateralRatio"
         })
     
-        info(new Date(), "RiskiestTroves", riskiestTroves.length);
-        info("Current Price", String(store.state.price));
+        info(new Date() + " - RiskiestTroves: " + riskiestTroves.length);
+        info("Current Price " + String(store.state.price));
     
         await Promise.all(riskiestTroves.map(trove => {
             trove.icr = trove.collateralRatio(liquity.store.state.price);
@@ -143,29 +145,33 @@ class MainCtrl {
             .sort(this.byDescendingCollateral)
             .slice(0, max);
     
-        info('Liquidated troves', troves.length);
+        info('Liquidated troves: ' + troves.length);
     
         if (troves.length === 0) {
             // Nothing to liquidate
             return;
         }
     
-        let {tx, expectedCompensation} = await this.sendLiquidate(liquity, troves);
+        let {tx, expectedCompensation} = await this.liquidate(liquity, troves);
 
         if (tx == null) return;
 
         tx = await this.listenHigherGasPriceTx(liquity, tx, troves, expectedCompensation);
 
-        await this.handleSuccessLiquidation(tx, troves);
+        await this.handleSuccessfulLiquidation(tx, troves);
     }
 
-    async sendLiquidate(liquity, troves) {
+    /**
+     * The profitability threshold is calculated by summing up 
+     * 0.5% of the deposited amount of all troves beeing liquidated + 20zusd of each trove
+     */
+    async liquidate(liquity, troves) {
         const { store } = liquity;
         const addresses = troves.map(trove => trove.ownerAddress);
         let tx;
     
         try {
-            const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice(addresses);
+            const maxGasPriceFromMempool = await mempool.getMaxLiquidationGasPrice(addresses);
             let gasPrice;
 
             console.log('maxGasPriceFromMempool', maxGasPriceFromMempool.toString());
@@ -237,8 +243,8 @@ class MainCtrl {
     }
 
     /**
-     * watch mempool pending txs, if there is a same liquidation tx with higher gas price,
-     * it will try to send new tx with higher price, maximum 5 times
+     * watch mempool pending txs, if there is a liquidation tx with higher gas price,
+     * try to send a new tx with higher price, maximum 5 times
      * @returns new tx with higher gas price
      */
     async listenHigherGasPriceTx(liquity, tx, troves, expectedCompensation) {
@@ -265,7 +271,7 @@ class MainCtrl {
                     return resolve(newLiqTx);
                 }
     
-                const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice(null, curTx);
+                const maxGasPriceFromMempool = await mempool.getMaxLiquidationGasPrice(null, curTx);
                 const curGasPrice = Decimal.fromBigNumberString(curTx.gasPrice.toHexString());
                 if (maxGasPriceFromMempool.gt(curGasPrice)) {
                     const addresses = troves.map(trove => trove.ownerAddress);
@@ -293,7 +299,7 @@ class MainCtrl {
         });
     }
 
-    async handleSuccessLiquidation(tx, troves) {
+    async handleSuccessfulLiquidation(tx, troves) {
         const receipt = await tx.waitForReceipt();
 
         if (receipt.status === "failed") {

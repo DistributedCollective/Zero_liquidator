@@ -14,16 +14,23 @@ Whenever the price drops the bot retrieves a list of troves with a collateral ra
 If collateral is below 110% the trove (or many of them) can be liquidated.
 The bot calls the liquidate function on the troveManager contract and sends the list of collected addresses as parameter.
 
-To be competitive against other liquidators and to assure the transaction is included in the mempool even if the network is under high load, dynamic gas prices are implemented. They are based on a profit estimation and the current state of the mempool. 
+To be competitive against other liquidators and to assure the transaction is included in the mempool even if the network is under high load, dynamic gas prices are implemented. 
 
 To set the protocol addresses go to packages/lib-ethers/deployments/default/mainnet.json
 
+## Gas price optimization
+
+Before triggering a liquidation the mempool is examined. 
+In case competing liquidations are found the default gas price will be increased by 5% to the current highest bidder but only up to the profitability threshold set in the config.
+In case no other liquidations are found but the block is full the default gas price will be increased by 5% to the current lowest bidder in the block.
+This examination is repeated every 5 seconds until the block got mined.
+If the result requires a gas price update the submitted transaction will be bumped by a factor of 1.4.
 
 
 
 ## Testing
 
-Testing requires a full deployment of the Zero protocol with mock-pricefeed set.
+Testing locally requires a full deployment of the Zero protocol with mock-pricefeed set.
 
 
 
