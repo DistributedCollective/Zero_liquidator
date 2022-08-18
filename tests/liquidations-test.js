@@ -11,7 +11,7 @@ const main = require('../src/controllers/main');
 const db = require('../src/controllers/db');
 const mempool = require('../src/controllers/mempool');
 
-const mnemonic = "";
+const mnemonic = process.env.MNEMONIC;
 const hdnode = ethers.utils.HDNode.fromMnemonic(mnemonic);
 const derivationPath = "m/44'/37310'/0'/0/";
 
@@ -218,12 +218,12 @@ async function start() {
     liquity.store.subscribe(({ newState }) => {
         // logState("new state", newState);
     });
-
     
     liquity.store.onLoaded = async () => {
         logState('current state', liquity.store.state);
 
         console.log('zusdPool', (await liquity.getZUSDInStabilityPool()).toString());
+
 
         // testLiquidations(liquity);
 

@@ -63,9 +63,9 @@ class Mempool {
             if (res && res.pending) {
                 let txs = [];
                 for (const adrTxs of Object.values(res.pending)) {
-                    for (const id of Object.keys(adrTxs)) {
-                        if (adrTxs[id] && adrTxs[id].length > 0) {
-                            txs = txs.concat(adrTxs[id]);
+                    for (const list of Object.values(adrTxs)) {
+                        if (list && list.length > 0) {
+                            txs.push(...list);
                         }
                     }
                 }
@@ -98,27 +98,30 @@ class Mempool {
     async getMempoolStats(liquidationTxGas = Decimal.from(0)) {
         let txList = await this.getMempoolTxs();
         let totalGas = Decimal.from(0);
-        let lowestGasPriceInBlock;
+        let lowestGasPriceInBlock = Decimal.from(0);
 
-        txList = txList.sort((a, b) => Number(b.gasPrice) - Number(a.gasPrice));
-
-        lowestGasPriceInBlock = Decimal.fromBigNumberString(txList[txList.length - 1].gasPrice);
+        txList = txList || [];
 
         console.log('pending txs', txList.length);
+        
+        if (txList.length > 0) {
+            txList = txList.sort((a, b) => Number(b.gasPrice) - Number(a.gasPrice));
+            lowestGasPriceInBlock = Decimal.fromBigNumberString(txList[txList.length - 1].gasPrice);
+        }
 
-        for (const tx of txList) {
+        txList.forEach(tx => {
             totalGas = totalGas.add(Decimal.from(Number(tx.gas)));
-
+    
             if (totalGas.add(liquidationTxGas).lt(maxBlockGas)) {
                 lowestGasPriceInBlock = Decimal.fromBigNumberString(tx.gasPrice);
             }
-        }
+        });
 
         return {
             totalGas: totalGas,
             isBlockFull: totalGas.gt(maxBlockGas),
             lowestGasPriceInBlock
-        }
+        };
     }
 }
 

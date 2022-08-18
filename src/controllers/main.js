@@ -10,6 +10,9 @@ const mempool = require('./mempool');
 const TroveStatus = require("../models/troveStatus");
 const Utils = require('../utils/utils');
 
+const GAS_RATE_TO_BUMPTX = 1.4; //min rate of gas price need to increase to bump tx
+const COLLATERAL_COMPENSATION_RATE = 0.005;
+
 function log(message) {
     console.log(`${`[${new Date().toLocaleTimeString()}]`} ${message}`);
 }
@@ -171,7 +174,10 @@ class MainCtrl {
         let tx;
     
         try {
-            const mempoolStats = await mempool.getMempoolStats(Decimal.from(1500000));
+            const liquidation = await liquity.populate.liquidate(addresses);
+            const gasLimit = Math.round(liquidation.rawPopulatedTransaction.gasLimit.toNumber() * 1.2);
+
+            const mempoolStats = await mempool.getMempoolStats(Decimal.from(gasLimit));
             const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice(addresses);
             let gasPrice;
 
@@ -179,7 +185,7 @@ class MainCtrl {
             console.log('lowestGasPriceInBlock', mempoolStats.lowestGasPriceInBlock.toString());
     
             if (maxGasPriceFromMempool.gt(0)) {
-                gasPrice = maxGasPriceFromMempool.mul(1.05);
+                gasPrice = maxGasPriceFromMempool.mul(config.gasPriceBuffer);
             } else {
                 gasPrice = await liquity.connection.provider
                 .getGasPrice()
@@ -191,20 +197,18 @@ class MainCtrl {
             }
 
             if (mempoolStats.isBlockFull && gasPrice.lt(mempoolStats.lowestGasPriceInBlock)) {
-                gasPrice = mempoolStats.lowestGasPriceInBlock.mul(1.05);
+                gasPrice = mempoolStats.lowestGasPriceInBlock.mul(config.gasPriceBuffer);
             }
     
             await Promise.all(troves.map(trove => db.updateTrove(trove.dbId, {
                 status: TroveStatus.liquidating
             })));
     
-            const liquidation = await liquity.populate.liquidate(addresses, { gasPrice: gasPrice.hex });
-            const gasLimit = liquidation.rawPopulatedTransaction.gasLimit.toNumber();
             const expectedCost = gasPrice.mul(gasLimit).mul(store.state.price);
-    
+
             const total = troves.reduce((a, b) => a.add(b));
             const expectedCompensation = total.collateral
-                .mul(0.005)
+                .mul(COLLATERAL_COMPENSATION_RATE)
                 .mul(store.state.price) //btc price
                 .add(ZUSD_LIQUIDATION_RESERVE.mul(troves.length)); //20 zusd
     
@@ -226,26 +230,34 @@ class MainCtrl {
                 lastGasPrice = gasPrice;
             }
     
-            console.log('sending tx', new Date());
-            tx = await liquidation.send({
-                gasLimit: String(Math.round(gasLimit * 1.2))
-            });
-            console.log('tx', tx.rawSentTransaction.hash);
-    
-            return {
-                tx,
-                expectedCompensation
-            };
+            try {
+                console.log('sending tx', new Date());
+                tx = await liquidation.send({
+                    gasPrice: gasPrice.hex,
+                    gasLimit: String(gasLimit)
+                });
+                console.log('tx', tx.rawSentTransaction.hash);
+        
+                return {
+                    tx,
+                    expectedCompensation
+                };
+            } catch (err2) {
+                error("An error occured when sending liquidation transaction");
+                error(err2);
+
+                await Promise.all(troves.map((trove) => db.updateLiquidatingTrove(trove.ownerAddress, {
+                    txHash: tx && tx.rawSentTransaction.hash,
+                    status: TroveStatus.failed
+                })));
+            }
+
         } catch (err) {
             error("Unexpected error:");
             console.error(err);
-    
-            await Promise.all(troves.map((trove) => db.updateLiquidatingTrove(trove.ownerAddress, {
-                txHash: tx && tx.rawSentTransaction.hash,
-                status: TroveStatus.failed
-            })));
-            return {};
         }
+
+        return {};
     }
 
     /**
@@ -281,9 +293,10 @@ class MainCtrl {
                 const curGasPrice = Decimal.fromBigNumberString(curTx.gasPrice.toHexString());
                 if (maxGasPriceFromMempool.gt(curGasPrice)) {
                     const addresses = troves.map(trove => trove.ownerAddress);
-                    let newGasPrice = maxGasPriceFromMempool.mul(1.005);
-                    if (newGasPrice.lt(curGasPrice.mul(1.4))) {
-                        newGasPrice = curGasPrice.mul(1.4001);
+                    let newGasPrice = maxGasPriceFromMempool.mul(config.gasPriceBuffer);
+
+                    if (newGasPrice.lt(curGasPrice.mul(GAS_RATE_TO_BUMPTX))) {
+                        newGasPrice = curGasPrice.mul(GAS_RATE_TO_BUMPTX * 1.001); //0.1% higher gas price need to bump tx
                     }
 
                     const expectedCost = newGasPrice.mul(curTx.gasLimit.toNumber()).mul(curPrice);
@@ -358,7 +371,7 @@ class MainCtrl {
      * @param {Decimal} [price]
      * @returns {(trove: UserTrove) => boolean}
      */
-     underCollateralized = price => trove => {
+    underCollateralized = price => trove => {
         // console.log(trove.ownerAddress + " col " + trove.collateralRatio(price));
         return trove.collateralRatioIsBelowMinimum(price);
     }
