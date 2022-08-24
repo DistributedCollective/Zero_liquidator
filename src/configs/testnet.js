@@ -8,5 +8,6 @@ module.exports = {
         chatId: process.env.TELEGRAM_CHATID
     },
     gasPriceBuffer: 1.1,
-    gasCostThreshold: 0.95
+    gasCostThreshold: 0.95,
+    gasIncrease: 1, //wei
 };

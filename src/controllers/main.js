@@ -12,6 +12,7 @@ const Utils = require('../utils/utils');
 
 const GAS_RATE_TO_BUMPTX = 1.4; //min rate of gas price need to increase to bump tx
 const COLLATERAL_COMPENSATION_RATE = 0.005;
+const gasIncreaseValue = Decimal.fromBigNumberString(ethers.BigNumber.from(String(config.gasIncrease)).toHexString());
 
 function log(message) {
     console.log(`${`[${new Date().toLocaleTimeString()}]`} ${message}`);
@@ -178,14 +179,14 @@ class MainCtrl {
             const gasLimit = Math.round(liquidation.rawPopulatedTransaction.gasLimit.toNumber() * 1.2);
 
             const mempoolStats = await mempool.getMempoolStats(Decimal.from(gasLimit));
-            const maxGasPriceFromMempool = await mempool.getMaxLiquidateGasPrice(addresses);
+            const maxGasPriceFromMempool = await mempool.getMaxLiquidationGasPrice(addresses);
             let gasPrice;
 
             console.log('maxGasPriceFromMempool', maxGasPriceFromMempool.toString());
             console.log('lowestGasPriceInBlock', mempoolStats.lowestGasPriceInBlock.toString());
     
             if (maxGasPriceFromMempool.gt(0)) {
-                gasPrice = maxGasPriceFromMempool.mul(config.gasPriceBuffer);
+                gasPrice = maxGasPriceFromMempool.add(gasIncreaseValue);
             } else {
                 gasPrice = await liquity.connection.provider
                 .getGasPrice()
@@ -254,7 +255,7 @@ class MainCtrl {
 
         } catch (err) {
             error("Unexpected error:");
-            console.error(err);
+            error(err);
         }
 
         return {};
@@ -293,10 +294,10 @@ class MainCtrl {
                 const curGasPrice = Decimal.fromBigNumberString(curTx.gasPrice.toHexString());
                 if (maxGasPriceFromMempool.gt(curGasPrice)) {
                     const addresses = troves.map(trove => trove.ownerAddress);
-                    let newGasPrice = maxGasPriceFromMempool.mul(config.gasPriceBuffer);
+                    let newGasPrice = maxGasPriceFromMempool.add(gasIncreaseValue);
 
                     if (newGasPrice.lt(curGasPrice.mul(GAS_RATE_TO_BUMPTX))) {
-                        newGasPrice = curGasPrice.mul(GAS_RATE_TO_BUMPTX * 1.001); //0.1% higher gas price need to bump tx
+                        newGasPrice = curGasPrice.mul(GAS_RATE_TO_BUMPTX).add(gasIncreaseValue);
                     }
 
                     const expectedCost = newGasPrice.mul(curTx.gasLimit.toNumber()).mul(curPrice);

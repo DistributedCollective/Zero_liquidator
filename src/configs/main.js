@@ -1,5 +1,5 @@
 module.exports = {
-    node: "https://main.sovryn.app/rpc",
+    node: "https://mainnet.sovryn.app/rpc",
     db: "zero_main.db",
     blockExplorer: "https://explorer.rsk.co",
     serverPort: 3005,
@@ -8,5 +8,6 @@ module.exports = {
         chatId: process.env.TELEGRAM_CHATID
     },
     gasPriceBuffer: 1.1,
-    gasCostThreshold: 0.95
+    gasCostThreshold: 0.95,
+    gasIncrease: 1, //wei
 };
