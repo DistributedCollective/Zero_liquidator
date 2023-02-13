@@ -125,8 +125,12 @@ class DbCtrl {
         }
     }
 
-    async getTrove(ownerAddress, status = 'open') {
-        return await this.troveModel.findOne({ owner: ownerAddress, status: status });
+    async getTrove(ownerAddress, status) {
+        const cond = { owner: ownerAddress };
+
+        if (status) cond['status'] = status;
+
+        return await this.troveModel.findOne(cond);
     }
 
     async listTroves({ status, limit, offset, latest } = {}) {
@@ -138,9 +142,12 @@ class DbCtrl {
             offset,
             orderBy: {
                 status: -1,
-                icr: 1,
+                icr: 1
             }
         });
+
+        list.sort((a, b) => Number(a.icr) - Number(b.icr));
+        
         return list || [];
     }
 
@@ -153,3 +160,4 @@ class DbCtrl {
 }
 
 module.exports = new DbCtrl();
+

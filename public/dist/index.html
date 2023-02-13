@@ -28,11 +28,9 @@
                         <th>Total USD</th>
                         <th>RBTC</th>
                         <th>ZUSD</th>
-                        <th>ZERO</th>
-                        <th>NUE</th>
                     </tr>
                     <tr ng-repeat="account in ctrl.accounts">
-                        <td><a ng-href="{{ctrl.blockExplorer}}address/{{account.address}}" target="_blank">{{
+                        <td><a ng-href="{{ctrl.blockExplorer}}/address/{{account.address}}" target="_blank">{{
                                 account.address }}</a></td>
                         <td>{{ account.usdBalance }}</td>
                         <td>
@@ -40,12 +38,6 @@
                         </td>
                         <td>
                             {{ account.zusdBalance }}
-                        </td>
-                        <td>
-                            {{ account.zeroBalance }}
-                        </td>
-                        <td>
-                            {{ account.nueBalance }}
                         </td>
                     </tr>
                 </table>

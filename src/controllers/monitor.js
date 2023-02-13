@@ -57,8 +57,13 @@ class Monitor {
     }
 
     async listTroves({ status = '', offset = 0, limit = 10 }, cb) {
+        if (status == 'liquidated') {
+            status = ['liquidated', 'closedByLiquidation'];
+        }
+
         const troves = await db.listTroves({ status, limit, offset, latest: true});
         const total = await db.countTroves({ status });
+
         cb({
             list: troves,
             total,

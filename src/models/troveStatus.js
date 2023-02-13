@@ -4,5 +4,6 @@ module.exports = {
     liquidating: 'liquidating',
     closedByOwner: 'closedByOwner',
     closedByLiquidation: 'closedByLiquidation',
+    closedByRedemption: 'closedByRedemption',
     failed: 'failed',
 }

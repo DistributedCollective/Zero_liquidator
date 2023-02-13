@@ -38,14 +38,21 @@ async function updateTrovesStatus(liquity) {
         }));
 
         const openingTroves = await db.listTroves({
-            status: [ TroveStatus.open, TroveStatus.liquidating ]
+            status: [ TroveStatus.open, TroveStatus.liquidating ],
+            limit: 1000
         });
 
         for (let i = 0; i < openingTroves.length; i++) {
             const trove = openingTroves[i];
             const netTrove = await liquity.getTrove(trove.owner);
 
-            if (netTrove && (netTrove.status == TroveStatus.closedByOwner || netTrove.status == TroveStatus.closedByLiquidation)) {
+            const closedStatus = [
+                TroveStatus.closedByOwner,
+                TroveStatus.closedByLiquidation,
+                TroveStatus.closedByRedemption,
+            ];
+
+            if (netTrove && closedStatus.indexOf(netTrove.status) >= 0) {
                 await db.updateTrove(trove.id, { status: netTrove.status });
                 console.log('updated', netTrove);
             }
@@ -122,6 +129,8 @@ class MainCtrl {
         };
 
         liquity.store.start();
+
+        this.watchTroveLiquidated(troveManager);
     }
 
     /**
@@ -273,8 +282,24 @@ class MainCtrl {
         let newLiqTx = tx;
         let nrTryWithHighGas = 5;
         let timer;
+        let confirmedTx = null;
+        let txList = [tx];
+
+        this.liquity.liquidate()
 
         info('listening higher gas price tx on mempool');
+
+        // Check confirmation of all sent transactions, if one of those txs get confirmed, stop try to bump tx
+        async function checkTransactionsConfirmation() {
+            await Promise.all(txList.map(async (tx) => {
+                const txHash = tx.rawSentTransaction.hash;
+                const receipt = await p.provider.getTransactionReceipt(txHash);
+                if (receipt && receipt.confirmations > 0) {
+                    info(`confirmed tx ${txHash}`)
+                    confirmedTx = tx;
+                }
+            }));
+        }
 
         return new Promise(async (resolve) => {
             timer = setInterval(async () => {
@@ -282,12 +307,12 @@ class MainCtrl {
                 const isTimeout = Date.now() - startAt > timeout;
                 const curPrice = liquity.store.state.price;
 
-                const receipt = await p.provider.getTransactionReceipt(curTx.hash);
+                await checkTransactionsConfirmation();
 
-                if ((receipt && receipt.status == 1) || nrTryWithHighGas <= 0 || isTimeout) {
+                if (confirmedTx || nrTryWithHighGas <= 0 || isTimeout) {
                     clearInterval(timer);
                     timer = null;
-                    return resolve(newLiqTx);
+                    return resolve(confirmedTx);
                 }
     
                 const maxGasPriceFromMempool = await mempool.getMaxLiquidationGasPrice(null, curTx);
@@ -311,6 +336,7 @@ class MainCtrl {
                         });
 
                         info(`new tx ${newLiqTx.rawSentTransaction.hash}`);
+                        txList.push(newLiqTx);
         
                         nrTryWithHighGas --;
                     }
@@ -402,6 +428,37 @@ class MainCtrl {
         return filteredTroves;
     }
 
+    /**
+     * Watch liquidated troves and find the liquidator address, tx hash
+     * 
+     * @param {import("../../packages/lib-ethers/dist/types").TroveManager} troveManager 
+     */
+    watchTroveLiquidated(troveManager) {
+        const troveLiquidatedEvent = troveManager.filters.TroveLiquidated();
+        const p = this;
+
+        troveManager.on(troveLiquidatedEvent, async (troveOwnerAdr) => {
+            info(`Trove of ${troveOwnerAdr} get liquidated`);
+
+            await Utils.waste(1); //delay a litle time to wait db updated
+
+            const dbTrove = await db.getTrove(troveOwnerAdr);
+
+            if (dbTrove) {
+                const logs = await p.provider.getLogs(troveManager.filters.TroveLiquidated(troveOwnerAdr));
+                const txHash = logs && logs[0] && logs[0].transactionHash;
+
+                if (txHash) {
+                    const tx = await p.provider.getTransaction(txHash);
+                    
+                    await db.updateTrove(dbTrove.id, {
+                        liquidator: tx.from,
+                        txHash: txHash
+                    });
+                }
+            }
+        });
+    }
 }
 
 module.exports = new MainCtrl();

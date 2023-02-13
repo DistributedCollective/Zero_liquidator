@@ -1,8 +1,8 @@
 module.exports = {
-    node: "https://mainnet.sovryn.app/rpc",
+    node: "https://rsk-internal.sovryn.app/rpc",
     db: "zero_main.db",
     blockExplorer: "https://explorer.rsk.co",
-    serverPort: 3005,
+    serverPort: 3007,
     telegram: {
         apiToken: process.env.TELEGRAM_APITOKEN,
         chatId: process.env.TELEGRAM_CHATID
