@@ -7,12 +7,14 @@ exports._connect = exports._connectByChainId = exports._connectToDeployment = ex
 const abstract_signer_1 = require("@ethersproject/abstract-signer");
 const dev_json_1 = __importDefault(require("../deployments/dev.json"));
 const rsktestnet_json_1 = __importDefault(require("../deployments/rsktestnet.json"));
+const rsksovrynmainnet_json_1 = __importDefault(require("../deployments/rsksovrynmainnet.json"));
 const rskdev_json_1 = __importDefault(require("../deployments/rskdev.json"));
 const contracts_1 = require("./contracts");
 const _Multicall_1 = require("./_Multicall");
 const dev = dev_json_1.default;
 const deployments = {
     [rsktestnet_json_1.default.chainId]: rsktestnet_json_1.default,
+    ...(rsksovrynmainnet_json_1.default ? { [rsksovrynmainnet_json_1.default.chainId]: rsksovrynmainnet_json_1.default } : {}),
     ...(rskdev_json_1.default ? { [rskdev_json_1.default.chainId]: rskdev_json_1.default } : {}),
     ...(dev !== null ? { [dev.chainId]: dev } : {})
 };

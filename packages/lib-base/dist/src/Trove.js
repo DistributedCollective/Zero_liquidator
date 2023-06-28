@@ -320,7 +320,7 @@ class Trove {
      * @param borrowingRate - Borrowing rate to use when calculating the Trove's debt.
      */
     static create(params, borrowingRate) {
-        return exports._emptyTrove.apply(troveCreation(exports._normalizeTroveCreation(params)), borrowingRate);
+        return exports._emptyTrove.apply(troveCreation((0, exports._normalizeTroveCreation)(params)), borrowingRate);
     }
     /**
      * Calculate the parameters of an {@link TransactableLiquity.openTrove | openTrove()} transaction
@@ -331,7 +331,7 @@ class Trove {
      */
     static recreate(that, borrowingRate) {
         const change = exports._emptyTrove.whatChanged(that, borrowingRate);
-        assert_1.default((change === null || change === void 0 ? void 0 : change.type) === "creation");
+        (0, assert_1.default)((change === null || change === void 0 ? void 0 : change.type) === "creation");
         return change.params;
     }
     /**
@@ -342,7 +342,7 @@ class Trove {
      * @param borrowingRate - Borrowing rate to use when adding to the Trove's debt.
      */
     adjust(params, borrowingRate) {
-        return this.apply(troveAdjustment(exports._normalizeTroveAdjustment(params)), borrowingRate);
+        return this.apply(troveAdjustment((0, exports._normalizeTroveAdjustment)(params)), borrowingRate);
     }
     /**
      * Calculate the parameters of an {@link TransactableLiquity.adjustTrove | adjustTrove()}
@@ -353,7 +353,7 @@ class Trove {
      */
     adjustTo(that, borrowingRate) {
         const change = this.whatChanged(that, borrowingRate);
-        assert_1.default((change === null || change === void 0 ? void 0 : change.type) === "adjustment");
+        (0, assert_1.default)((change === null || change === void 0 ? void 0 : change.type) === "adjustment");
         return change.params;
     }
 }

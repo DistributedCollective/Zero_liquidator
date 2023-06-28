@@ -24,7 +24,7 @@ class Fees {
         this._lastFeeOperation = lastFeeOperation;
         this._timeOfLatestBlock = timeOfLatestBlock;
         this._recoveryMode = recoveryMode;
-        assert_1.default(this._minuteDecayFactor.lt(1));
+        (0, assert_1.default)(this._minuteDecayFactor.lt(1));
     }
     /** @internal */
     _setRecoveryMode(recoveryMode) {

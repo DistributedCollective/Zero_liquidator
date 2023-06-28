@@ -271,7 +271,7 @@ export class ReadableEthersLiquity implements ReadableLiquity {
       stabilityPool.deposits(address, { ...overrides }),
       stabilityPool.getCompoundedZUSDDeposit(address, { ...overrides }),
       stabilityPool.getDepositorETHGain(address, { ...overrides }),
-      stabilityPool.getDepositorZEROGain(address, { ...overrides })
+      stabilityPool.getDepositorSOVGain(address, { ...overrides })
     ]);
 
     return new StabilityDeposit(

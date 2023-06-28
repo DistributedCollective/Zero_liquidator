@@ -178,8 +178,8 @@ class Decimal {
         return new Decimal(this._bigNumber.mul(multiplier._bigNumber).div(divider._bigNumber));
     }
     pow(exponent) {
-        assert_1.default(Number.isInteger(exponent));
-        assert_1.default(0 <= exponent && exponent <= 0xffffffff); // Ensure we're safe to use bitwise ops
+        (0, assert_1.default)(Number.isInteger(exponent));
+        (0, assert_1.default)(0 <= exponent && exponent <= 0xffffffff); // Ensure we're safe to use bitwise ops
         if (exponent === 0) {
             return Decimal.ONE;
         }

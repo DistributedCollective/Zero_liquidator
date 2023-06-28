@@ -174,7 +174,7 @@ class LiquityStore {
     }
     /** @internal */
     _load(baseState, extraState) {
-        assert_1.default(!this._loaded);
+        (0, assert_1.default)(!this._loaded);
         this._baseState = baseState;
         this._derivedState = this._derive(baseState);
         this._extraState = extraState;
@@ -186,7 +186,7 @@ class LiquityStore {
     }
     /** @internal */
     _update(baseStateUpdate, extraStateUpdate) {
-        assert_1.default(this._baseState && this._derivedState);
+        (0, assert_1.default)(this._baseState && this._derivedState);
         const oldState = this.state;
         if (baseStateUpdate) {
             this._baseState = this._reduce(this._baseState, baseStateUpdate);
@@ -194,7 +194,7 @@ class LiquityStore {
         // Always running this lets us derive state based on passage of time, like baseRate decay
         this._derivedState = this._reduceDerived(this._derivedState, this._derive(this._baseState));
         if (extraStateUpdate) {
-            assert_1.default(this._extraState);
+            (0, assert_1.default)(this._extraState);
             this._extraState = this._reduceExtra(this._extraState, extraStateUpdate);
         }
         this._scheduleUpdate();
