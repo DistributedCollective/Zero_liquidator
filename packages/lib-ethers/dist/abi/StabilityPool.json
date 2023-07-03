@@ -884,7 +884,7 @@
                 "type": "address"
             }
         ],
-        "name": "getDepositorZEROGain",
+        "name": "getDepositorSOVGain",
         "outputs": [
             {
                 "internalType": "uint256",

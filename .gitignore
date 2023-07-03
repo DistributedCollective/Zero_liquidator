@@ -2,3 +2,5 @@
 db
 node_modules
 dist
+logs
+pm2.json

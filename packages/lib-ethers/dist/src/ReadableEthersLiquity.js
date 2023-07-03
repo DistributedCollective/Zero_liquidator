@@ -151,7 +151,7 @@ class ReadableEthersLiquity {
             stabilityPool.deposits(address, { ...overrides }),
             stabilityPool.getCompoundedZUSDDeposit(address, { ...overrides }),
             stabilityPool.getDepositorETHGain(address, { ...overrides }),
-            stabilityPool.getDepositorZEROGain(address, { ...overrides })
+            stabilityPool.getDepositorSOVGain(address, { ...overrides })
         ]);
         return new lib_base_1.StabilityDeposit(decimalify(initialValue), decimalify(currentZUSD), decimalify(collateralGain), decimalify(zeroReward), frontEndTag);
     }
