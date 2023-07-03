@@ -31,8 +31,8 @@ class Monitor {
 
         let usdBalance = accountWithInfo.zusdBalance || 0;
 
-        if (Number(accountWithInfo.rBtcBalance) > 0) {
-            usdBalance += Number(accountWithInfo.rBtcBalance) * Number(this.liquidity.store.state.price.toString());
+        if (Number(accountWithInfo.rBtcBalance) > 0 && price) {
+            usdBalance += Number(accountWithInfo.rBtcBalance) * Number(price.toString());
         }
 
         accountWithInfo.usdBalance = usdBalance.toFixed(2);

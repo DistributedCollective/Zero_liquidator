@@ -364,7 +364,7 @@ class MainCtrl {
         const gasPrice = Decimal.fromBigNumberString(tx.rawSentTransaction.gasPrice);
         const gasCost = gasPrice.mul(receipt.rawReceipt.gasUsed.toNumber()).mul(store.state.price);
         const totalCompensation = collateralGasCompensation
-            .mul(store.state.price)
+            .mul(this.liquity.store.state.price)
             .add(zusdGasCompensation);
         const totalProfit = totalCompensation.sub(gasCost);
         const profitPerTrove = totalProfit.div(liquidatedAddresses.length);
